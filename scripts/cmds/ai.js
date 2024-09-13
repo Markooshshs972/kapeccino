@@ -1,130 +1,71 @@
 const axios = require('axios');
 
-const services = [
-  { url: 'https://gpt-four.vercel.app/gpt', param: { prompt: 'prompt' }, isCustom: true }
-];
-
-async function callService(service, prompt, senderID) {
-  if (service.isCustom) {
-    try {
-      const response = await axios.get(`${service.url}?${service.param.prompt}=${encodeURIComponent(prompt)}`);
-      return response.data.answer || response.data;
-    } catch (error) {
-      console.error(`Custom service error from ${service.url}: ${error.message}`);
-      throw new Error(`Error from ${service.url}: ${error.message}`);
-    }
-  } else {
-    const params = {};
-    for (const [key, value] of Object.entries(service.param)) {
-      params[key] = key === 'uid' ? senderID : encodeURIComponent(prompt);
-    }
-    const queryString = new URLSearchParams(params).toString();
-    try {
-      const response = await axios.get(`${service.url}?${queryString}`);
-      return response.data.answer || response.data;
-    } catch (error) {
-      console.error(`Service error from ${service.url}: ${error.message}`);
-      throw new Error(`Error from ${service.url}: ${error.message}`);
-    }
+async function fetchFromAI(url, params) {
+  try {
+    const response = await axios.get(url, { params });
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    return null;
   }
 }
 
-async function getFastestValidAnswer(prompt, senderID) {
-  const promises = services.map(service => callService(service, prompt, senderID));
-  const results = await Promise.allSettled(promises);
-  for (const result of results) {
-    if (result.status === 'fulfilled' && result.value) {
-      return result.value;
+async function getAIResponse(input, userId, messageID) {
+  const services = [
+    { url: 'https://ai-tools.replit.app/gpt', params: { prompt: input, uid: userId } },
+    { url: 'https://openaikey-x20f.onrender.com/api', params: { prompt: input } },
+    { url: 'http://fi1.bot-hosting.net:6518/gpt', params: { query: input } },
+    { url: 'https://ai-chat-gpt-4-lite.onrender.com/api/hercai', params: { question: input } }
+  ];
+
+  let response ="ʜᴇʟʟᴏ ᴅᴇᴀʀ ɪ'ᴍ ʏᴏᴜʀ ᴀssɪsᴛᴀɴᴛ ɪᴢᴀɴᴀ ᴀɪ 🎴";
+  let currentIndex = 0;
+
+  for (let i = 0; i < services.length; i++) {
+    const service = services[currentIndex];
+    const data = await fetchFromAI(service.url, service.params);
+    if (data && (data.gpt4 || data.reply || data.response)) {
+      response = data.gpt4 || data.reply || data.response;
+      break;
     }
+    currentIndex = (currentIndex + 1) % services.length; // Move to the next service in the cycle
   }
-  throw new Error('All services failed to provide a valid answer');
+
+  return { response, messageID };
 }
 
-const ArYAN = ['ai', '-ai'];
+const jake = `╭┈◈『 ✿ 』 𝙟𝙖𝙮 𝙖𝙞 👑
+👑
+┆
+╰┈◈➤`;
 
-module.exports = {
+ module.exports = {
   config: {
     name: 'ai',
-    version: '1.0.1',
-    author: 'ArYAN',
+    author: 'mark pogi',
     role: 0,
     category: 'ai',
-    longDescription: {
-      en: 'This is a large Ai language model trained by OpenAi, it is designed to assist with a wide range of tasks.',
-    },
-    guide: {
-      en: '\nAi < questions >\n\n🔎 𝗚𝘂𝗶𝗱𝗲\nAi what is capital of France?',
-    },
+    shortDescription: 'ai to ask anything',
   },
-
-  langs: {
-    en: {
-      final: "",
-      header: "🧋✨ | 𝙼𝚘𝚌𝚑𝚊 𝙰𝚒\n━━━━━━━━━━━━━━━━",
-      footer: "━━━━━━━━━━━━━━━━",
+  onStart: async function ({ api, event, args }) {
+    const input = args.join(' ').trim();
+    if (!input) {
+      api.sendMessage(`${jake}\nPlease provide a question or statement.\n
+`, event.threadID, event.messageID);
+      return;
     }
+
+    const { response, messageID } = await getAIResponse(input, event.senderID, event.messageID);
+    api.sendMessage(`${jake}\n${response}\n
+`, event.threadID, messageID);
   },
-
-  onStart: async function () {
-    // Empty onStart function
-  },
-
-  onChat: async function ({ api, event, args, getLang, message }) {
-    try {
-      const prefix = ArYAN.find(p => event.body && event.body.toLowerCase().startsWith(p));
-      let prompt;
-
-      // Check if the user is replying to a bot message
-      if (event.type === 'message_reply') {
-        const replyMessage = event.messageReply; // Adjusted to use the replyMessage directly
-
-        // Check if the bot's original message starts with the header
-        if (replyMessage.body && replyMessage.body.startsWith(getLang("header"))) {
-          // Extract the user's reply from the event
-          prompt = event.body.trim();
-
-          // Combine the user's reply with the bot's original message
-          prompt = `${replyMessage.body}\n\nUser reply: ${prompt}`;
-        } else {
-          // If the bot's original message doesn't start with the header, return
-          return;
-        }
-      } else if (prefix) {
-        prompt = event.body.substring(prefix.length).trim() || 'hello';
-      } else {
-        return;
-      }
-
-      if (prompt === 'hello') {
-        const greetingMessage = `${getLang("header")}\nHello! How can I assist you today?\n${getLang("footer")}`;
-        api.sendMessage(greetingMessage, event.threadID, event.messageID);
-        console.log('Sent greeting message as a reply to user');
-        return;
-      }
-
-      try {
-        const fastestAnswer = await getFastestValidAnswer(prompt, event.senderID);
-
-        const finalMsg = `${getLang("header")}\n${fastestAnswer}\n${getLang("footer")}`;
-        api.sendMessage(finalMsg, event.threadID, event.messageID);
-
-        console.log('Sent answer as a reply to user');
-      } catch (error) {
-        console.error(`Failed to get answer: ${error.message}`);
-        api.sendMessage(
-          `${error.message}.`,
-          event.threadID,
-          event.messageID
-        );
-      }
-    } catch (error) {
-      console.error(`Failed to process chat: ${error.message}`);
-      api.sendMessage(
-        `${error.message}.`,
-        event.threadID,
-        event.messageID
-      );
-
+  onChat: async function ({ event, message }) {
+    const messageContent = event.body.trim().toLowerCase();
+    if (messageContent.startsWith("ai")) {
+      const input = messageContent.replace(/^ai\s*/, "").trim();
+      const { response, messageID } = await getAIResponse(input, event.senderID, message.messageID);
+      message.reply(`${jake}\n${response}\n
+`, messageID);
     }
   }
 };
