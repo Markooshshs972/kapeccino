@@ -1,122 +1,244 @@
-const commandInfoMap = {
-  ai: {
-    name: "ai",
-    description: "AI Based on GPT-4",
-    guide: "%1ai what is life?"
-  },
-  alldl: {
-    name: "alldl",
-    description: "Download video content using link from Facebook, Instagram, Tiktok, Youtube, Twitter, and Spotify audio",
-    guide: "%1alldl [link]"
-  },
-  dalle: {
-    name: "dalle",
-    description: "Create images through text",
-    guide: "%1dalle cat in a hoodie"
-  },
-  help: {
-    name: "help",
-    description: "View all commands",
-    guide: "%1help\n%1help <command name>"
-  },
-  lyrics: {
-    name: "lyrics",
-    description: "Fetches lyrics of a song",
-    guide: "%1lyrics perfect by ed sheeran"
-  },
-  pinterest: {
-    name: "pinterest",
-    description: "Searches images on Pinterest",
-    guide: "%1pinterest cat -10"
-  },
-  prefix: {
-    name: "prefix",
-    description: "View some commands and show bot's prefix",
-    guide: "%1prefix"
-  },
-  remini: {
-    name: "remini",
-    description: "Enhances your image to lessen the blur",
-    guide: "Reply to an image and type %1remini"
-  },
-  removebg: {
-    name: "removebg",
-    description: "Remove background of an image",
-    guide: "Reply to an image and type %1removebg or %1rbg"
-  },
-  spotify: {
-    name: "spotify",
-    description: "Play song from Spotify",
-    guide: "%1spotify <song title> <artist>\nExample:\n%1spotify perfect by ed sheeran"
-  },
-  tempmail: {
-    name: "tempmail",
-    description: "Get temporary emails and their inbox messages",
-    guide: "%1tempmail create\n%1tempmail inbox <email>"
-  },
-  translate: {
-    name: "translate",
-    description: "Translate to any language",
-    guide: "Reply to the text you want to translate and type\n%1translate <language>"
-  },
-  unsend: {
-    name: "unsend",
-    description: "Deletes bot messages",
-    guide: "Reply to a bot message and type %1unsend"
-  },
-  uptime: {
-    name: "uptime",
-    description: "See how long the bot has been running",
-    guide: "%1uptime"
-  }
-};
+const fs = require("fs-extra");
+const axios = require("axios");
+const path = require("path");
+const { getPrefix } = global.utils;
+const { commands, aliases } = global.GoatBot;
+const doNotDelete = "[ 🐐 | Goat Bot V2 ]";
 
 module.exports = {
-  config: {
-    name: "help",
-    aliases: ["help"],
-    version: 1.0,
-    author: "LiANE&Coffee",
-    shortDescription: { en: "View all commands" },
-    category: "members",
-  },
-  onStart: async function({ message, args }) {
-    const prefix = global.GoatBot.config.prefix; // Access the global prefix
+    config: {
+        name: "help",
+        version: "1.18",
+        author: "NTKhang || Modified By Mrkimsters",
+        countDown: 5,
+        role: 0,
+        shortDescription: {
+            vi: "Xem cách dùng lệnh",
+            en: "View command usage"
+        },
+        longDescription: {
+            vi: "Xem cách sử dụng của các lệnh",
+            en: "View command usage"
+        },
+        category: "info",
+        guide: {
+            en: "{pn} [empty | <page number> | <command name>]"
+                + "\n   {pn} <command name> [-u | usage | -g | guide]: only show command usage"
+                + "\n   {pn} <command name> [-i | info]: only show command info"
+                + "\n   {pn} <command name> [-r | role]: only show command role"
+                + "\n   {pn} <command name> [-a | alias]: only show command alias"
+                + "\n   {pn}all: show all commands"
+        },
+        priority: 1
+    },
 
-    if (args[0]) {
-      const command = args[0].toLowerCase();
-      if (commandInfoMap[command]) {
-        const { name, description, guide } = commandInfoMap[command];
-        const response = `━━━━━━━━━━━━━━━━\n𝙲𝚘𝚖𝚖𝚊𝚗𝚍 𝙽𝚊𝚖𝚎: ${name}\n𝙳𝚎𝚜𝚌𝚛𝚒𝚙𝚝𝚒𝚘𝚗: ${description}\n𝙶𝚞𝚒𝚍𝚎: ${guide.replace(/%1/g, prefix)}\n━━━━━━━━━━━━━━━━`;
-        return message.reply(response);
-      } else {
-        return message.reply("Command not found.");
-      }
-    } else {
-      const commandsList = `━━━━━━━━━━━━━━━━
-𝙰𝚟𝚊𝚒𝚕𝚊𝚋𝚕𝚎 𝙲𝚘𝚖𝚖𝚊𝚗𝚍𝚜:
-╭─╼━━━━━━━━╾─╮
-│ %1 Ai
-│ %1 Alldl
-│ %1 Dalle
-│ %1 Help
-│ %1 Lyrics
-│ %1 Pinterest
-│ %1 Prefix
-│ %1 Remini
-│ %1 Removebg
-│ %1 Tempmail
-│ %1 Translate
-│ %1 Unsend
-│ %1 Uptime
-╰─━━━━━━━━━╾─╯
-%1help <command name>
-𝚃𝚘 𝚜𝚎𝚎 𝚑𝚘𝚠 𝚝𝚘 𝚞𝚜𝚎 𝚊𝚟𝚊𝚒𝚕𝚊𝚋𝚕𝚎 𝚌𝚘𝚖𝚖𝚊𝚗𝚍𝚜.
+    langs: {
+        en: {
+            help: "👑 Commands List\n\n%1\n\n» Page: %2/%3\n» Use $help [page number] to display the information on the additional pages.",
+            helpAll: "👑 All Commands\n\n%1",
+            commandNotFound: "Command \"%1\" does not exist",
+            getInfoCommand: "『 %1 』\nView the details of the commands.\n\n   •  Version: %2\n   •  Category: %3\n   •  Cooldown: %4\n   •  Permission: %5\n   •  Creator: %6\n\nUsage:\n   •  %7",
+            onlyInfo: "『 Info 』\nCommand name: %1\nDescription: %2\nOther names: %3\nOther names in your group: %4\nVersion: %5\nRole: %6\nTime per command: %7s\nAuthor: %8",
+            onlyUsage: "『 Usage 』\n%1",
+            onlyAlias: "『 Alias 』\nOther names: %1\nOther names in your group: %2",
+            onlyRole: "『 Role 』\n%1",
+            doNotHave: "Do not have",
+            roleText0: "0 (All users)",
+            roleText1: "1 (Group administrators)",
+            roleText2: "2 (Admin bot)",
+            roleText0setRole: "0 (set role, all users)",
+            roleText1setRole: "1 (set role, group administrators)",
+            pageNotFound: "Page %1 does not exist"
+        }
+    },
 
-Example: %1help ai
-━━━━━━━━━━━━━━━━`;
+    onStart: async function ({ message, args, event, threadsData, getLang, role }) {
+        const langCode = await threadsData.get(event.threadID, "data.lang") || global.GoatBot.config.language;
+        let customLang = {};
+        const pathCustomLang = path.normalize(`${process.cwd()}/languages/cmds/${langCode}.js`);
+        if (fs.existsSync(pathCustomLang))
+            customLang = require(pathCustomLang);
 
-      return message.reply(commandsList.replace(/%1/g, prefix));
+        const { threadID } = event;
+        const threadData = await threadsData.get(threadID);
+        const prefix = getPrefix(threadID);
+        const commandName = (args[0] || "").toLowerCase();
+        const command = commands.get(commandName) || commands.get(aliases.get(commandName));
+
+        if (args[0] === "all") {
+            const categorizedCommands = {};
+            commands.forEach((value, key) => {
+                const category = value.config.category || "Others";
+                if (!categorizedCommands[category]) {
+                    categorizedCommands[category] = [];
+                }
+                categorizedCommands[category].push(key);
+            });
+
+            let msg = "";
+            for (const [category, cmds] of Object.entries(categorizedCommands)) {
+                msg += `『🎴 ${category} 🎴』\n${cmds.join(", ")}\n\n`;
+            }
+
+            return message.reply(getLang("helpAll", msg.trim()));
+        }
+
+        // ———————————————— LIST ALL COMMANDS ——————————————— //
+        if (!command && !args[0] || !isNaN(args[0])) {
+            const arrayInfo = [];
+            let msg = "";
+            const page = parseInt(args[0]) || 1;
+            const numberOfOnePage = 10;
+            for (const [name, value] of commands) {
+                if (value.config.role > 1 && role < value.config.role)
+                    continue;
+                let describe = name;
+                let shortDescription;
+                const shortDescriptionCustomLang = customLang[name]?.shortDescription;
+                if (shortDescriptionCustomLang != undefined)
+                    shortDescription = checkLangObject(shortDescriptionCustomLang, langCode);
+                else if (value.config.shortDescription)
+                    shortDescription = checkLangObject(value.config.shortDescription, langCode);
+                if (shortDescription)
+                    describe += `: ${cropContent(shortDescription.charAt(0).toUpperCase() + shortDescription.slice(1))}`;
+                arrayInfo.push({
+                    data: describe,
+                    priority: value.priority || 0
+                });
+            }
+
+            arrayInfo.sort((a, b) => a.data.localeCompare(b.data)); // sort by name
+            arrayInfo.sort((a, b) => a.priority > b.priority ? -1 : 1); // sort by priority
+            const { allPage, totalPage } = global.utils.splitPage(arrayInfo, numberOfOnePage);
+            if (page < 1 || page > totalPage)
+                return message.reply(getLang("pageNotFound", page));
+
+            const returnArray = allPage[page - 1] || [];
+            const startNumber = (page - 1) * numberOfOnePage + 1;
+            msg += (returnArray || []).reduce((text, item, index) => text += `🎴 ${index + startNumber} 🎴 ${item.data}\n`, '').slice(0, -1);
+            await message.reply(getLang("help", msg, page, totalPage, commands.size, prefix, doNotDelete));
+        }
+        // ———————————— COMMAND DOES NOT EXIST ———————————— //
+        else if (!command && args[0]) {
+            return message.reply(getLang("commandNotFound", args[0]));
+        }
+        // ————————————————— INFO COMMAND ————————————————— //
+        else {
+            const formSendMessage = {};
+            const configCommand = command.config;
+
+            let guide = configCommand.guide?.[langCode] || configCommand.guide?.["en"];
+            if (guide == undefined)
+                guide = customLang[configCommand.name]?.guide?.[langCode] || customLang[configCommand.name]?.guide?.["en"];
+
+            guide = guide || {
+                body: ""
+            };
+            if (typeof guide == "string")
+                guide = { body: guide };
+            const guideBody = guide.body
+                .replace(/\{prefix\}|\{p\}/g, prefix)
+                .replace(/\{name\}|\{n\}/g, configCommand.name)
+                .replace(/\{pn\}/g, prefix + configCommand.name);
+
+            const aliasesString = configCommand.aliases ? configCommand.aliases.join(", ") : getLang("doNotHave");
+            const aliasesThisGroup = threadData.data.aliases ? (threadData.data.aliases[configCommand.name] || []).join(", ") : getLang("doNotHave");
+
+            let roleOfCommand = configCommand.role;
+            let roleIsSet = false;
+            if (threadData.data.setRole?.[configCommand.name]) {
+                roleOfCommand = threadData.data.setRole[configCommand.name];
+                roleIsSet = true;
+            }
+
+            const roleText = roleOfCommand == 0 ?
+                (roleIsSet ? getLang("roleText0setRole") : getLang("roleText0")) :
+                roleOfCommand == 1 ?
+                    (roleIsSet ? getLang("roleText1setRole") : getLang("roleText1")) :
+                    getLang("roleText2");
+
+            const author = configCommand.author;
+            const descriptionCustomLang = customLang[configCommand.name]?.longDescription;
+            let description = checkLangObject(configCommand.longDescription, langCode);
+            if (description == undefined)
+                if (descriptionCustomLang != undefined)
+                    description = checkLangObject(descriptionCustomLang, langCode);
+                else
+                    description = getLang("doNotHave");
+
+            let sendWithAttachment = false; // check subcommand need send with attachment or not
+
+            if (args[1]?.match(/^-g|guide|-u|usage$/)) {
+                formSendMessage.body = getLang("onlyUsage", guideBody.split("\n").join("\n     •  "));
+                sendWithAttachment = true;
+            }
+            else if (args[1]?.match(/^-a|alias|aliase|aliases$/))
+                formSendMessage.body = getLang("onlyAlias", aliasesString, aliasesThisGroup);
+            else if (args[1]?.match(/^-r|role$/))
+                formSendMessage.body = getLang("onlyRole", roleText);
+            else if (args[1]?.match(/^-i|info$/))
+                formSendMessage.body = getLang("onlyInfo", configCommand.name, description, aliasesString, aliasesThisGroup, configCommand.version, roleText, configCommand.countDown || 1, author || "");
+            else {
+                formSendMessage.body = getLang("getInfoCommand", configCommand.name, configCommand.version, configCommand.category || "No category", configCommand.countDown || 1, roleText, author || "", `${guideBody.split("\n").join("\n     •  ")}`);
+                sendWithAttachment = true;
+            }
+
+            if (sendWithAttachment && guide.attachment) {
+                if (typeof guide.attachment == "object" && !Array.isArray(guide.attachment)) {
+                    const promises = [];
+                    formSendMessage.attachment = [];
+
+                    for (const keyPathFile in guide.attachment) {
+                        const pathFile = path.normalize(keyPathFile);
+
+                        if (!fs.existsSync(pathFile)) {
+                            const cutDirPath = path.dirname(pathFile).split(path.sep);
+                            for (let i = 0; i < cutDirPath.length; i++) {
+                                const pathCheck = `${cutDirPath.slice(0, i + 1).join(path.sep)}${path.sep}`; // create path
+                                if (!fs.existsSync(pathCheck))
+                                    fs.mkdirSync(pathCheck); // create folder
+                            }
+                            const getFilePromise = axios.get(guide.attachment[keyPathFile], { responseType: 'arraybuffer' })
+                                .then(response => {
+                                    fs.writeFileSync(pathFile, Buffer.from(response.data));
+                                });
+
+                            promises.push({
+                                pathFile,
+                                getFilePromise
+                            });
+                        }
+                        else {
+                            promises.push({
+                                pathFile,
+                                getFilePromise: Promise.resolve()
+                            });
+                        }
+                    }
+
+                    await Promise.all(promises.map(item => item.getFilePromise));
+                    for (const item of promises)
+                        formSendMessage.attachment.push(fs.createReadStream(item.pathFile));
+                }
+            }
+
+            return message.reply(formSendMessage);
+        }
     }
-  }
 };
+
+function checkLangObject(data, langCode) {
+    if (typeof data == "string")
+        return data;
+    if (typeof data == "object" && !Array.isArray(data))
+        return data[langCode] || data.en || undefined;
+    return undefined;
+}
+
+function cropContent(content, max = 50) {
+    if (content.length > max) {
+        content = content.slice(0, max - 3);
+        content = content + "...";
+    }
+    return content;
+          }
